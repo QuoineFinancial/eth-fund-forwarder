@@ -1,4 +1,4 @@
-pragma solidity ^0.4.14;
+pragma solidity ^0.4.24;
 
 contract ContractToken {
     function transfer(address to, uint256 value) public returns (bool);
@@ -8,12 +8,12 @@ contract ContractToken {
 contract FundForwarder {
     Wallet wallet;
     
-    function FundForwarder(address _wallet) public {
+    constructor(address _wallet) public {
         wallet = Wallet(_wallet);
     }
     
-    modifier onlyOwner() {
-        require(msg.sender == wallet.owner());
+    modifier onlyFundForwarder() {
+        require(msg.sender == wallet.fundForwarder());
         _;
     }
     
@@ -22,31 +22,26 @@ contract FundForwarder {
         _;
     }
 
-    function forward(address _id, uint _amount)
-    onlyOwner
+    function forward(address _id)
+    onlyFundForwarder
     walletRunning
     public 
     returns (bool) {
         bool success = false;
         address destination = wallet.mainWallet();
+        uint amount;
 
         if (_id != address(0)) {
             ContractToken token = ContractToken(_id);
-            if (_amount > token.balanceOf(this)) {
-                return false;
-            }
-
-            success = token.transfer(destination, _amount);
+            amount = token.balanceOf(this);
+            success = token.transfer(destination, amount);
         } else {
-            if (_amount > this.balance) {
-                return false;
-            }
-
-            success = destination.send(_amount);
+            amount = address(this).balance;
+            success = destination.send(amount);
         }
         
         if (success) {
-            wallet.logForward(this, destination, _id, _amount);
+            wallet.logForward(this, destination, _id, amount);
         }
         
         return success;
@@ -56,12 +51,12 @@ contract FundForwarder {
 contract UserWallet {
     Wallet wallet;
     
-    function UserWallet(address _wallet) public {
+    constructor(address _wallet) public {
         wallet = Wallet(_wallet);
     }
     
-    modifier onlyOwner() {
-        require(msg.sender == wallet.owner());
+    modifier onlyFundForwarder() {
+        require(msg.sender == wallet.fundForwarder());
         _;
     }
 
@@ -73,11 +68,10 @@ contract UserWallet {
         (_data);
      }
 
-    function forward(address _id, uint _amount) 
-        onlyOwner
+    function forward(address _id) 
+        onlyFundForwarder
         public
     returns (bool) {
-        (_amount);
         return wallet.getForwarder(_id).delegatecall(msg.data);
     }
 }
@@ -85,10 +79,12 @@ contract UserWallet {
 contract Owner {
     address public mainWallet;
     address public owner;
+    address public fundForwarder;
     
-    function Owner() public {
+    constructor(address _fundForwarder) public {
         owner = msg.sender;
         mainWallet = msg.sender;
+        fundForwarder = _fundForwarder;
     }
     
     modifier onlyOwner() {
@@ -103,6 +99,10 @@ contract Owner {
     function changeOwner(address _owner) onlyOwner public {
         owner = _owner;
     }
+
+    function changeFundForwarder(address _fundForwarder) onlyOwner public {
+        fundForwarder = _fundForwarder;
+    }
 }
 
 contract Generator {
@@ -112,7 +112,7 @@ contract Generator {
     
     event LogAddress(address _address);
     
-    function Generator(address _admin) public {
+    constructor(address _admin) public {
         admin = _admin;
         owner = msg.sender;
     }
@@ -133,7 +133,7 @@ contract Generator {
         public
     returns (address newAddress) {
         newAddress = address(new UserWallet(vendor));
-        LogAddress(newAddress);
+        emit LogAddress(newAddress);
     }
     
     function updateWhitelist(address _address, bool _state) onlyAdmin public {
@@ -145,6 +145,8 @@ contract Wallet is Owner {
     mapping(address => address) forwarder;
     address public defaultForwarder = address(new FundForwarder(this));
     bool public running = true;
+
+    constructor(address _fundForwarder) Owner(_fundForwarder) { }
     
     event LogForward(address from, address to, address contractToken, uint amount);
     
@@ -167,6 +169,6 @@ contract Wallet is Owner {
     }
     
     function logForward(address from, address to, address _token, uint amount) public {
-        LogForward(from, to, _token, amount);
+        emit LogForward(from, to, _token, amount);
     }
-} 
+}
