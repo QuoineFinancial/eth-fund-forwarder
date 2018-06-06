@@ -1,10 +1,12 @@
 pragma solidity ^0.4.24;
 
+//ERC20 Token interface
 contract ContractToken {
     function transfer(address to, uint256 value) public returns (bool);
     function balanceOf(address user) public returns (uint256);
 }
 
+// Contract used for forwarding ETH and token from UserWallet to exchange wallet
 contract FundForwarder {
     Wallet wallet;
     
@@ -22,6 +24,7 @@ contract FundForwarder {
         _;
     }
 
+    // only forwarder from wallet has the right to call this function
     function forward(address _id)
     onlyFundForwarder
     walletRunning
@@ -31,6 +34,8 @@ contract FundForwarder {
         address destination = wallet.mainWallet();
         uint amount;
 
+        // default address 0x000...00 for transfer ETH
+        // otherwise, load contract token and call transfer method
         if (_id != address(0)) {
             ContractToken token = ContractToken(_id);
             amount = token.balanceOf(this);
@@ -48,6 +53,8 @@ contract FundForwarder {
     }
 }
 
+// The contract at user's address
+// This contract will delegate the right to withdraw money to main address to fundforwarder 
 contract UserWallet {
     Wallet wallet;
     
@@ -60,26 +67,30 @@ contract UserWallet {
         _;
     }
 
+    // Allow this contract to receive ETH
     function () public payable { }
     
+    // Allow this contract to receive token
     function tokenFallback(address _from, uint _value, bytes _data) public {
         (_from);
         (_value);
         (_data);
      }
 
+    // only fundforwarder has the right to call forward
     function forward(address _id) 
         onlyFundForwarder
         public
     returns (bool) {
+        // give the fundforwarder the right to transfer token/ETH out of this address
         return wallet.getForwarder(_id).delegatecall(msg.data);
     }
 }
 
 contract Owner {
-    address public mainWallet;
-    address public owner;
-    address public fundForwarder;
+    address public mainWallet; // default address keep ETH and token
+    address public owner; // owner has the right to change mainWallet, and fundforwarder
+    address public fundForwarder; // default address has the right to call forward on UserWallet
     
     constructor(address _fundForwarder) public {
         owner = msg.sender;
@@ -105,9 +116,11 @@ contract Owner {
     }
 }
 
+// Generate new address for user
+// The new address can be used for ETH and other ERC20 Token
 contract Generator {
-    address public admin;
-    address public owner;
+    address public admin; // default address has the right to update whitelist wallet
+    address public owner; // default address has the right to make new UserWallet contract
     mapping(address => bool) whiteList;
     
     event LogAddress(address _address);
@@ -128,6 +141,8 @@ contract Generator {
         _;
     } 
     
+    // new wallet is created only if it was called by the owner,
+    // and the wallet is enable by the whitelist
     function generate(address vendor) 
         makable(vendor)
         public
@@ -136,11 +151,17 @@ contract Generator {
         emit LogAddress(newAddress);
     }
     
+    // only admin is allowed to update whitelist
+    // true/false = enable/disable
     function updateWhitelist(address _address, bool _state) onlyAdmin public {
         whiteList[_address] = _state;
     }
 }
 
+// Wallet controlls
+// * main wallet address for ETH and tokens
+// * fundforwarder who has the right to move fund to main wallet
+// * update forwarder contract for new contract tokens
 contract Wallet is Owner {
     mapping(address => address) forwarder;
     address public defaultForwarder = address(new FundForwarder(this));
@@ -162,6 +183,7 @@ contract Wallet is Owner {
         running = true;
     }
     
+    // by default, every eth and tokens will be forward by defaultForwarder
     function getForwarder(address _token) public returns (address) {
         address res = forwarder[_token];
         if (res == 0) res = defaultForwarder;
