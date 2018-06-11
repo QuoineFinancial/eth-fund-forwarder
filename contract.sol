@@ -168,7 +168,7 @@ contract Wallet is Owner {
 
     constructor(address _fundForwarder) Owner(_fundForwarder) { }
     
-    event LogForward(address from, address to, address contractToken, uint amount);
+    event LogForward(address contractToken, address from, address to, uint amount);
     
     function updateForwardContract(address _token, address _address) onlyOwner public {
         forwardContract[_token] = _address;
