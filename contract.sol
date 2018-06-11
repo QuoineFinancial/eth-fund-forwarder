@@ -7,7 +7,7 @@ contract ContractToken {
 }
 
 // Contract used for forwarding ETH and token from UserWallet to exchange wallet
-contract FundForwarder {
+contract FundForwardContract {
     Wallet wallet;
     
     constructor(address _wallet) public {
@@ -29,13 +29,14 @@ contract FundForwarder {
     onlyFundForwarder
     walletRunning
     public 
-    returns (bool) {
-        bool success = false;
+    returns (bool success) {
+        success = false;
         address destination = wallet.mainWallet();
         uint amount;
 
         // default address 0x000...00 for transfer ETH
         // otherwise, load contract token and call transfer method
+        // transfer all available ETH / (_id) token to exchange wallet
         if (_id != address(0)) {
             ContractToken token = ContractToken(_id);
             amount = token.balanceOf(this);
@@ -46,15 +47,13 @@ contract FundForwarder {
         }
         
         if (success) {
-            wallet.logForward(this, destination, _id, amount);
+            wallet.logForward(_id, this, destination, amount);
         }
-        
-        return success;
     }
 }
 
 // The contract at user's address
-// This contract will delegate the right to withdraw money to main address to fundforwarder 
+// This contract will delegate fund forwarder contract the right to withdraw money to exchange address
 contract UserWallet {
     Wallet wallet;
     
@@ -83,7 +82,7 @@ contract UserWallet {
         public
     returns (bool) {
         // give the fundforwarder the right to transfer token/ETH out of this address
-        return wallet.getForwarder(_id).delegatecall(msg.data);
+        return wallet.getForwardContract(_id).delegatecall(msg.data);
     }
 }
 
@@ -163,16 +162,16 @@ contract Generator {
 // * fundforwarder who has the right to move fund to main wallet
 // * update forwarder contract for new contract tokens
 contract Wallet is Owner {
-    mapping(address => address) forwarder;
-    address public defaultForwarder = address(new FundForwarder(this));
+    mapping(address => address) forwardContract;
+    address public defaultForwardContract = address(new FundForwardContract(this));
     bool public running = true;
 
     constructor(address _fundForwarder) Owner(_fundForwarder) { }
     
     event LogForward(address from, address to, address contractToken, uint amount);
     
-    function updateForwarder(address _token, address _address) onlyOwner public {
-        forwarder[_token] = _address;
+    function updateForwardContract(address _token, address _address) onlyOwner public {
+        forwardContract[_token] = _address;
     }
     
     function resume() onlyOwner public {
@@ -183,14 +182,13 @@ contract Wallet is Owner {
         running = true;
     }
     
-    // by default, every eth and tokens will be forward by defaultForwarder
-    function getForwarder(address _token) public returns (address) {
-        address res = forwarder[_token];
-        if (res == 0) res = defaultForwarder;
-        return res;
+    // by default, every tokens and ETH will be forward by defaultForwarder
+    function getForwardContract(address _token) public returns (address res) {
+        res = forwardContract[_token];
+        if (res == 0) res = defaultForwardContract;
     }
     
-    function logForward(address from, address to, address _token, uint amount) public {
-        emit LogForward(from, to, _token, amount);
+    function logForward(address token, address from, address to, uint amount) public {
+        emit LogForward(token, from, to, amount);
     }
 }
