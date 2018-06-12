@@ -118,42 +118,26 @@ contract Owner {
 // Generate new address for user
 // The new address can be used for ETH and other ERC20 Token
 contract Generator {
-    address public admin; // default address has the right to update whitelist wallet
     address public owner; // default address has the right to make new UserWallet contract
-    mapping(address => bool) whiteList;
     
     event LogAddress(address _address);
     
-    constructor(address _admin) public {
-        admin = _admin;
+    constructor() public {
         owner = msg.sender;
     }
     
-    modifier onlyAdmin() {
-        require(msg.sender == admin);
-        _;
-    }
-    
-    modifier makable(address vendor) {
+    modifier onlyOwner() {
         require(msg.sender == owner);
-        require(whiteList[vendor] == true);
         _;
     } 
     
     // new wallet is created only if it was called by the owner,
-    // and the wallet is enable by the whitelist
     function generate(address vendor) 
-        makable(vendor)
+        onlyOwner
         public
     returns (address newAddress) {
         newAddress = address(new UserWallet(vendor));
         emit LogAddress(newAddress);
-    }
-    
-    // only admin is allowed to update whitelist
-    // true/false = enable/disable
-    function updateWhitelist(address _address, bool _state) onlyAdmin public {
-        whiteList[_address] = _state;
     }
 }
 
