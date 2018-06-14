@@ -180,25 +180,6 @@ contract UserWallet {
     }
 }
 
-
-contract Owner is Pausable{
-    address public mainWallet; // default address keep ETH and token
-    address public fundForwarder; // default address has the right to call forward on UserWallet
-    
-    constructor(address _fundForwarder) public {
-        mainWallet = msg.sender;
-        fundForwarder = _fundForwarder;
-    }
-    
-    function changeMainWallet(address _mainWallet) onlyOwner public {
-        mainWallet = _mainWallet;
-    }
-    
-    function changeFundForwarder(address _fundForwarder) onlyOwner public {
-        fundForwarder = _fundForwarder;
-    }
-}
-
 // Generate new address for user
 // The new address can be used for ETH and other ERC20 Token
 contract Generator is Ownable{
