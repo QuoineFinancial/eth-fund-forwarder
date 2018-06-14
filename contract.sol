@@ -214,24 +214,46 @@ contract Generator is Ownable{
     }
 }
 
-// Wallet controlls
-// * main wallet address for ETH and tokens
-// * fundforwarder who has the right to move fund to main wallet
-// * update forwarder contract for new contract tokens
-contract Wallet is Owner {
-    mapping(address => address) forwardContract;
+/**
+ * @title Wallet contract
+ * fundforwarder who has the right to move fund to main wallet
+ * update forwarder contract for new contract tokens
+ */
+ 
+contract Wallet is Pausable {
+    address public fundDestination; // default address keep ETH and token
+    address public fundForwarder; // default address has the right to call forward on UserWallet
     address public defaultForwardContract = address(new FundForwardContract(this));
-    bool public running = true;
+    mapping(address => address) forwardContracts;
 
-    constructor(address _fundForwarder) Owner(_fundForwarder) { }
-    
-    function updateForwardContract(address _token, address _address) onlyOwner public {
-        forwardContract[_token] = _address;
+    constructor(address _fundForwarder) public {
+        fundDestination = msg.sender;
+        fundForwarder = _fundForwarder;
     }
     
-    // by default, every tokens and ETH will be forward by defaultForwarder
+    function changeFundDestination(address _fundDestination) onlyOwner public {
+        fundDestination = _fundDestination;
+    }
+
+    function changeFundForwarder(address _fundForwarder) onlyOwner public {
+        fundForwarder = _fundForwarder;
+    }
+    
+    /**
+     * @notice Allow FundForwardContract customization for individual token
+     * @dev only owner can call this function
+     */    
+    function changeForwardContract(address _token, address _address) onlyOwner public {
+        forwardContracts[_token] = _address;
+    }
+    
+    /**
+     * @notice Allow FundForwardContract customization for individual token
+     * @dev only owner can call this function
+     */        
     function getForwardContract(address _token) public returns (address res) {
-        res = forwardContract[_token];
+        res = forwardContracts[_token];
         if (res == 0) res = defaultForwardContract;
     }
+    
 }
