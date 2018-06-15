@@ -145,7 +145,7 @@ contract FundForwardContract {
             success = token.transfer(destination, amount);
         } else {
             amount = address(this).balance;
-            success = destination.transfer(amount);
+            success = destination.send(amount);
         }
         
         if (success) {
