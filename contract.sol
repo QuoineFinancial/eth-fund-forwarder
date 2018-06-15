@@ -109,7 +109,7 @@ contract FundForwardContract {
     }
     
     /**
-     * @dev Throws if called by any account other than fund forwarder.
+     * @dev Throws if called by any account other than wallet.fundForwarder
      */
     modifier onlyFundForwarder() {
         require(msg.sender == wallet.fundForwarder());
@@ -123,9 +123,9 @@ contract FundForwardContract {
         _;
     }
     /**
-     * @notice Forward assets from userWallets to fundDestination
-     * @dev only forwarder from wallet has the right to call this function
-     * @param _id ERC20 contract address  
+     * @notice Forward assets from user address to fundDestination
+     * @dev only wallet.fundForwarder from wallet has the right to call this function
+     * @param _id ERC20 contract address
      */
     function forward(address _id)
     onlyFundForwarder
@@ -157,7 +157,7 @@ contract FundForwardContract {
 /**
  * @title User Wallet 
  * individual user address which receives external funding
- * The fund will then be forwarded to exchange settlement address using FundForwarderContract delegation
+ * The fund will then be forwarded to exchange settlement address using FundForwardContract delegation
  */
 contract UserWallet {
     Wallet wallet;
@@ -189,7 +189,7 @@ contract UserWallet {
     }
 
     /**
-     * @notice Delegate asset forwarding to FundForwarderContract
+     * @notice Delegate asset forwarding to FundForwardContract
      * @dev only wallet fundForwarder has the right to call forward
      * @param _id ERC20 contract address  
      */
@@ -213,7 +213,7 @@ contract UserWalletGenerator is Ownable {
     // new wallet is created only if it was called by the owner,
     /**
      * @notice Generate user address
-     * @param wallet : the wallet to generate UserWallet for 
+     * @param wallet the wallet to generate UserWallet for 
      */    
     function generate(address wallet) 
     onlyOwner
