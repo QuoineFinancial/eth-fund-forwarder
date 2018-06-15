@@ -142,15 +142,13 @@ contract FundForwardContract {
         if (_id != address(0)) {
             ContractToken token = ContractToken(_id);
             amount = token.balanceOf(this);
-            success = token.transfer(destination, amount);
+            token.transfer(destination, amount);
         } else {
             amount = address(this).balance;
-            success = destination.send(amount);
+            destination.transfer(amount);
         }
-        
-        if (success) {
-            emit FundForwarded(_id, this, destination, amount);
-        }
+        emit FundForwarded(_id, this, destination, amount);
+
     }
 }
 
@@ -263,7 +261,7 @@ contract Wallet is Pausable {
      * @notice Allow FundForwardContract customization for individual token
      * @dev only owner can call this function
      */        
-    function getForwardContract(address _token) public returns (address res) {
+    function getForwardContract(address _token) public view returns (address res) {
         res = forwardContracts[_token];
         if (res == 0) res = defaultForwardContract;
     }
