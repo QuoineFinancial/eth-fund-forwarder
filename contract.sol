@@ -223,8 +223,9 @@ contract UserWalletGenerator is Ownable {
 
 /**
  * @title Wallet contract
- * fundforwarder who has the right to move fund to main wallet
- * update forwarder contract for new contract tokens
+ * manages fundDestination which receives funds from user wallets
+ * manages fundForwarder which forwards funds from user wallets to fundDestination
+ * manages forwardContracts which determines which contract to use for each token
  */
 contract Wallet is Pausable {
     address public fundDestination; // default address keep ETH and token
