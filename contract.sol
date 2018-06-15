@@ -84,19 +84,26 @@ contract Pausable is Ownable {
     }
 }
 
-//ERC20 Token interface
+/**
+ * @title ContractToken
+ * ERC20 Contract Interfaces
+ */
 contract ContractToken {
     function transfer(address to, uint256 value) public returns (bool);
     function balanceOf(address user) public returns (uint256);
 }
 
 /**
- * @title FundForwardContract used for forwarding ETH and token from UserWallet to exchange wallet
+ * @title FundForwardContract 
+ * for forwarding ETH and token from UserWallet to exchange wallet
  */
-contract FundForwardContract {    
+contract FundForwardContract {
     Wallet wallet;
     event FundForwarded(address contractToken, address from, address to, uint amount);
     
+    /**
+     * @dev The constructor links this instance to the main wallet
+     */
     constructor(address _wallet) public {
         wallet = Wallet(_wallet);
     }
@@ -118,6 +125,7 @@ contract FundForwardContract {
     /**
      * @notice Forward assets from userWallets to fundDestination
      * @dev only forwarder from wallet has the right to call this function
+     * @param _id ERC20 contract address  
      */
     function forward(address _id)
     onlyFundForwarder
@@ -146,11 +154,17 @@ contract FundForwardContract {
     }
 }
 
-// The contract at user's address
-// This contract will delegate fund forwarder contract the right to withdraw money to exchange address
+/**
+ * @title User Wallet 
+ * individual user address which receives external funding
+ * The fund will then be forwarded to exchange settlement address using FundForwarderContract delegation
+ */
 contract UserWallet {
     Wallet wallet;
     
+    /**
+     * @dev The constructor links this instance to the main wallet
+     */
     constructor(address _wallet) public {
         wallet = Wallet(_wallet);
     }
@@ -160,37 +174,52 @@ contract UserWallet {
         _;
     }
 
-    // Allow this contract to receive ETH
+    /**
+     * @dev Allow this contract to receive ETH
+     */
     function () public payable { }
-    
-    // Allow this contract to receive token
+
+    /**
+     * @dev Allow this contract to receive token
+     */    
     function tokenFallback(address _from, uint _value, bytes _data) public {
         (_from);
         (_value);
         (_data);
     }
 
-    // only fundforwarder has the right to call forward
+    /**
+     * @notice Delegate asset forwarding to FundForwarderContract
+     * @dev only wallet fundForwarder has the right to call forward
+     * @param _id ERC20 contract address  
+     */
     function forward(address _id) 
-        onlyFundForwarder
-        public
+    onlyFundForwarder
+    public
     returns (bool) {
         // give the fundforwarder the right to transfer token/ETH out of this address
         return wallet.getForwardContract(_id).delegatecall(msg.data);
     }
 }
 
-// Generate new address for user
-// The new address can be used for ETH and other ERC20 Token
-contract Generator is Ownable{
+
+/**
+ * @title UserWalletGenerator
+ * Generate new address for user. The address can be used for ETH and other ERC20 Token
+ */
+contract UserWalletGenerator is Ownable {
     event LogAddress(address _address);
     
     // new wallet is created only if it was called by the owner,
-    function generate(address vendor) 
+    /**
+     * @notice Generate user address
+     * @param wallet : the wallet to generate UserWallet for 
+     */    
+    function generate(address wallet) 
     onlyOwner
     public
     returns (address newAddress) {
-        newAddress = address(new UserWallet(vendor));
+        newAddress = address(new UserWallet(wallet));
         emit LogAddress(newAddress);
     }
 }
@@ -200,13 +229,15 @@ contract Generator is Ownable{
  * fundforwarder who has the right to move fund to main wallet
  * update forwarder contract for new contract tokens
  */
- 
 contract Wallet is Pausable {
     address public fundDestination; // default address keep ETH and token
     address public fundForwarder; // default address has the right to call forward on UserWallet
     address public defaultForwardContract = address(new FundForwardContract(this));
     mapping(address => address) forwardContracts;
 
+    /**
+     * @dev The constructor allows specifying the fundForwarder for this Wallet
+     */
     constructor(address _fundForwarder) public {
         fundDestination = msg.sender;
         fundForwarder = _fundForwarder;
@@ -236,5 +267,5 @@ contract Wallet is Pausable {
         res = forwardContracts[_token];
         if (res == 0) res = defaultForwardContract;
     }
-    
+   
 }
