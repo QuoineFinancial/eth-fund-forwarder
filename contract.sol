@@ -131,8 +131,7 @@ contract FundForwardContract {
     onlyFundForwarder
     walletRunning
     public 
-    returns (bool success) {
-        success = false;
+    returns (bool) {
         address destination = wallet.fundDestination();
         uint amount;
 
@@ -148,7 +147,7 @@ contract FundForwardContract {
             destination.transfer(amount);
         }
         emit FundForwarded(_id, this, destination, amount);
-
+        return true;
     }
 }
 
