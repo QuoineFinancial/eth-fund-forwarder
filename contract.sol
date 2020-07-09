@@ -141,9 +141,11 @@ contract FundForwardContract {
         if (_id != address(0)) {
             ContractToken token = ContractToken(_id);
             amount = token.balanceOf(this);
+            require(amount > 0);
             token.transfer(destination, amount);
         } else {
             amount = address(this).balance;
+            require(amount > 0);
             destination.transfer(amount);
         }
         emit FundForwarded(_id, this, destination, amount);
@@ -265,5 +267,4 @@ contract Wallet is Pausable {
         res = forwardContracts[_token];
         if (res == 0) res = defaultForwardContract;
     }
-   
 }
